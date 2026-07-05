@@ -19,5 +19,5 @@ Since this is a lightweight web project, you don't need a complex build pipeline
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/YOUR_GITHUB_USERNAME/zero-g-chaos-pong.git](https://github.com/YOUR_GITHUB_USERNAME/zero-g-chaos-pong.git)
+git clone [https://github.com/haniajohar/zero-g-chaos-pong-game](https://github.com/haniajohar/zero-g-chaos-pong-game)
 cd zero-g-chaos-pong
