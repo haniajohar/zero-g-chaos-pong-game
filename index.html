@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-G Chaos Pong</title>
+    <!-- Google Fonts for Arcade & Cyberpunk aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #06060c;
+            --panel-bg: rgba(15, 15, 30, 0.7);
+            --border-color: rgba(0, 242, 254, 0.3);
+            --neon-blue: #00f2fe;
+            --neon-pink: #ff007f;
+            --neon-purple: #9d4edd;
+            --neon-orange: #ff9e00;
+            --neon-green: #39ff14;
+            --text-color: #f0f0f5;
+            --font-arcade: 'Orbitron', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+            --glow-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-body);
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(90, 0, 150, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 120, 200, 0.05) 0%, transparent 40%);
+        }
+
+        /* Responsive Layout Grid */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar HUD */
+        .sidebar {
+            flex: 0 0 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title-container {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-family: var(--font-arcade);
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.5));
+            animation: title-glow 3s infinite alternate;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: rgba(240, 240, 245, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-top: 4px;
+        }
+
+        /* Scoreboard */
+        .score-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .score-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .score-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(240, 240, 245, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .score-num {
+            font-family: var(--font-arcade);
+            font-size: 36px;
+            font-weight: 700;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .score-box.player { color: var(--neon-blue); }
+        .score-box.opponent { color: var(--neon-pink); }
+
+        .score-divider {
+            font-family: var(--font-arcade);
+            font-size: 20px;
+            color: rgba(240, 240, 245, 0.3);
+            padding: 0 15px;
+        }
+
+        /* Anomaly Tracker UI */
+        .anomaly-hud {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .anomaly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .anomaly-status-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .anomaly-timer-circle {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            flex-shrink: 0;
+        }
+
+        .anomaly-timer-circle svg {
+            width: 50px;
+            height: 50px;
+            transform: rotate(-90deg);
+        }
+
+        .anomaly-timer-circle circle {
+            fill: none;
+            stroke-width: 4;
+        }
+
+        .anomaly-timer-circle .bg-circle {
+            stroke: rgba(255, 255, 255, 0.05);
+        }
+
+        .anomaly-timer-circle .progress-circle {
+            stroke: var(--neon-purple);
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.1s linear;
+        }
+
+        .anomaly-timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-arcade);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .anomaly-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .anomaly-title {
+            font-family: var(--font-arcade);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--neon-purple);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(157, 78, 221, 0.4);
+        }
+
+        .anomaly-desc {
+            font-size: 11px;
+            color: rgba(240, 240, 245, 0.6);
+            line-height: 1.3;
+        }
+
+        /* Controls and settings */
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .btn.active {
+            background: rgba(0, 242, 254, 0.1);
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+        }
+
+        .btn-danger {
+            border-color: rgba(255, 0, 127, 0.3);
+        }
+        .btn-danger:hover {
+            background: rgba(255, 0, 127, 0.1);
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
+        }
+
+        /* Chaos Log Terminal */
+        .chaos-log-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(5, 5, 10, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+        }
+
+        .log-title {
+            font-family: var(--font-arcade);
+            font-size: 12px;
+            color: rgba(0, 242, 254, 0.7);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .log-title::after {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--neon-blue);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--neon-blue);
+            animation: pulse-dot 1s infinite alternate;
+        }
+
+        .log-terminal {
+            flex: 1;
+            font-family: monospace;
+            font-size: 11px;
+            color: rgba(0, 242, 254, 0.85);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+            scroll-behavior: smooth;
+        }
+
+        .log-terminal::-webkit-scrollbar {
+            width: 4px;
+        }
+        .log-terminal::-webkit-scrollbar-thumb {
+            background: rgba(0, 242, 254, 0.2);
+            border-radius: 2px;
+        }
+
+        .log-entry {
+            line-height: 1.4;
+            animation: fade-in 0.2s ease-out;
+        }
+        .log-time {
+            color: rgba(255, 255, 255, 0.3);
+            margin-right: 6px;
+        }
+        .log-text-anomaly {
+            color: var(--neon-purple);
+        }
+        .log-text-warning {
+            color: var(--neon-orange);
+            font-weight: bold;
+        }
+        .log-text-score {
+            color: var(--neon-green);
+        }
+
+        /* Main Game Arena */
+        .arena-container {
+            flex: 1;
+            position: relative;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: border-color 0.5s ease;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            max-width: 1000px;
+            max-height: 600px;
+            background: transparent;
+            cursor: none; /* Hide default cursor */
+        }
+
+        /* Overlay Banners */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(6, 6, 12, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            gap: 20px;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .menu-title {
+            font-family: var(--font-arcade);
+            font-size: 40px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-align: center;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0, 242, 254, 0.6));
+        }
+
+        .menu-subtitle {
+            font-size: 14px;
+            color: rgba(240, 240, 245, 0.6);
+            max-width: 450px;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .control-help {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-help span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-help span::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--neon-blue);
+        }
+
+        .difficulty-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        /* Anomaly Warning Flash Banner */
+        .warning-banner {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-50px);
+            background: rgba(255, 158, 0, 0.15);
+            border: 1px solid var(--neon-orange);
+            color: var(--neon-orange);
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-family: var(--font-arcade);
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 5;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            box-shadow: 0 0 20px rgba(255, 158, 0, 0.2), inset 0 0 10px rgba(255, 158, 0, 0.1);
+        }
+
+        .warning-banner.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            animation: warning-pulse 0.5s infinite alternate;
+        }
+
+        /* Screen Shake / Anomaly Visual Filters */
+        .shake {
+            animation: screen-shake 0.15s infinite alternate;
+        }
+
+        @keyframes title-glow {
+            from { filter: drop-shadow(0 0 4px rgba(0, 242, 254, 0.4)); }
+            to { filter: drop-shadow(0 0 12px rgba(157, 78, 221, 0.7)); }
+        }
+
+        @keyframes pulse-dot {
+            from { opacity: 0.4; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1.2); }
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes warning-pulse {
+            from { box-shadow: 0 0 10px rgba(255, 158, 0, 0.2); background: rgba(255, 158, 0, 0.1); }
+            to { box-shadow: 0 0 25px rgba(255, 158, 0, 0.4); background: rgba(255, 158, 0, 0.25); }
+        }
+
+        @keyframes screen-shake {
+            0% { transform: translate(2px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* Floating particles behind menu */
+        .bg-particles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Mobile Responsive adjustments */
+        @media (max-width: 950px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+                height: auto;
+            }
+            .app-container {
+                flex-direction: column;
+                height: auto;
+                padding: 10px;
+            }
+            .sidebar {
+                flex: none;
+                width: 100%;
+            }
+            .arena-container {
+                height: 450px;
+                aspect-ratio: auto;
+            }
+            .chaos-log-panel {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar HUD -->
+        <aside class="sidebar">
+            <div class="hud-panel">
+                <div class="title-container">
+                    <h1>Zero-G Chaos</h1>
+                    <div class="subtitle">Gravity Pong</div>
+                </div>
+
+                <!-- Scoreboard -->
+                <div class="score-container">
+                    <div class="score-box player">
+                        <div class="score-label">PLAYER</div>
+                        <div class="score-num" id="player-score">00</div>
+                    </div>
+                    <div class="score-divider">:</div>
+                    <div class="score-box opponent">
+                        <div class="score-label">CORVUS AI</div>
+                        <div class="score-num" id="opponent-score">00</div>
+                    </div>
+                </div>
+
+                <!-- Anomaly Tracker -->
+                <div class="anomaly-hud">
+                    <div class="anomaly-header">
+                        <span>Active System State</span>
+                    </div>
+                    <div class="anomaly-status-wrapper">
+                        <div class="anomaly-timer-circle">
+                            <svg>
+                                <circle class="bg-circle" cx="25" cy="25" r="21"></circle>
+                                <circle class="progress-circle" id="radial-timer" cx="25" cy="25" r="21" stroke-dasharray="132" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="anomaly-timer-text" id="hud-timer">10s</div>
+                        </div>
+                        <div class="anomaly-details">
+                            <div class="anomaly-title" id="hud-anomaly-name">Physics Normal</div>
+                            <div class="anomaly-desc" id="hud-anomaly-desc">Zero-G drift mechanics standard. No cosmic disturbances detected.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="controls-group">
+                    <div class="btn-row">
+                        <button class="btn" id="btn-sound" onclick="toggleSound()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            Sound On
+                        </button>
+                        <button class="btn btn-danger" id="btn-restart" onclick="restartGame()">Restart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chaos Event Logger -->
+            <div class="chaos-log-panel">
+                <div class="log-title">System Event Logger</div>
+                <div class="log-terminal" id="log-console">
+                    <div class="log-entry"><span class="log-time">[00:00.00]</span><span style="color: rgba(255,255,255,0.5)">System boot successful. Antigravity engines idling.</span></div>
+                    <div class="log-entry"><span class="log-time">[00:00.03]</span><span class="log-text-anomaly">Physics Engine calibrated to 0-G mode.</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Game Arena -->
+        <main class="arena-container" id="arena">
+            <!-- Flashing warning element -->
+            <div class="warning-banner" id="banner">GRAVITY ANOMALY INCOMING</div>
+
+            <!-- Interactive Game Canvas -->
+            <canvas id="game-canvas" width="1000" height="600"></canvas>
+
+            <!-- Screens & Interfaces -->
+            <div class="overlay" id="overlay-menu">
+                <div class="menu-title">Zero-G Chaos Pong</div>
+                <div class="menu-subtitle">
+                    Fend off the Corvus AI in a zero-gravity sandbox workspace. Keep the ball in play while gravity fluxes, spatial tears, and central attractors tear up local physics.
+                </div>
+                
+                <div class="control-help">
+                    <span>Mouse Move / Drag to move paddle</span>
+                    <span>AI predicts bounces and tracks obstacles</span>
+                </div>
+
+                <div class="difficulty-select">
+                    <button class="btn" onclick="selectDifficulty('easy')">Easy</button>
+                    <button class="btn active" id="default-diff" onclick="selectDifficulty('medium')">Medium</button>
+                    <button class="btn" onclick="selectDifficulty('hard')">Hard</button>
+                    <button class="btn" style="border-color: rgba(255, 0, 127, 0.4); color: var(--neon-pink)" onclick="selectDifficulty('chaos')">CHAOS</button>
+                </div>
+
+                <button class="btn btn-primary" style="padding: 15px 40px; font-size: 16px; border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 242, 254, 0.3); max-width: 250px;" onclick="startGame()">
+                    Engage Thrusters
+                </button>
+            </div>
+
+            <div class="overlay hidden" id="overlay-gameover">
+                <div class="menu-title" id="gameover-title">Victory Achieved</div>
+                <div class="menu-subtitle" id="gameover-subtitle">
+                    You defended the sector against the AI.
+                </div>
+                <button class="btn btn-primary" style="padding: 15px 40px; font-size: 16px; border-color: var(--neon-purple); max-width: 250px;" onclick="restartGame()">
+                    Initiate Rematch
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /* ==========================================
+           1. SOUND SYNTHESIS ENGINE (Web Audio API)
+           ========================================== */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                this.blackHoleNode = null;
+                this.blackHoleOsc = null;
+            }
+
+            init() {
+                if (this.ctx) return;
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    this.ctx = new AudioContextClass();
+                }
+            }
+
+            resume() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playPaddleHit() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(500, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playWallBounce() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.13);
+            }
+
+            playScorePlayer() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+                const duration = 0.1;
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+                    
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + duration);
+                });
+            }
+
+            playScoreAI() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                const notes = [392.00, 311.13, 261.63]; // G4, Eb4, C4 sad chimes
+                const duration = 0.15;
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.12);
+                    
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.12 + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(this.ctx.currentTime + idx * 0.12);
+                    osc.stop(this.ctx.currentTime + idx * 0.12 + duration);
+                });
+            }
+
+            playAnomalyWarning() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                // Double beep oscillator warning
+                for (let i = 0; i < 2; i++) {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const startTime = this.ctx.currentTime + i * 0.25;
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440, startTime);
+                    osc.frequency.linearRampToValueAtTime(550, startTime + 0.12);
+
+                    gain.gain.setValueAtTime(0.1, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.12);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.13);
+                }
+            }
+
+            playAnomalyTrigger() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1000, this.ctx.currentTime + 0.4);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.42);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.45);
+            }
+
+            playPortalTeleport() {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(150, this.ctx.currentTime + 0.2);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.22);
+            }
+
+            playBlackHoleHum(active) {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+
+                if (active) {
+                    if (this.blackHoleOsc) return; // Already humming
+                    
+                    this.blackHoleOsc = this.ctx.createOscillator();
+                    this.blackHoleNode = this.ctx.createGain();
+                    
+                    this.blackHoleOsc.type = 'sine';
+                    this.blackHoleOsc.frequency.setValueAtTime(65, this.ctx.currentTime);
+                    
+                    // Modulate frequency to create deep pulsated rumble
+                    const lfo = this.ctx.createOscillator();
+                    const lfoGain = this.ctx.createGain();
+                    lfo.frequency.value = 4; // 4Hz pulse
+                    lfoGain.gain.value = 5; // Swing frequency by 5Hz
+                    
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(this.blackHoleOsc.frequency);
+                    
+                    this.blackHoleNode.gain.setValueAtTime(0.01, this.ctx.currentTime);
+                    this.blackHoleNode.gain.linearRampToValueAtTime(0.18, this.ctx.currentTime + 0.5);
+
+                    this.blackHoleOsc.connect(this.blackHoleNode);
+                    this.blackHoleNode.connect(this.ctx.destination);
+
+                    lfo.start();
+                    this.blackHoleOsc.start();
+                } else {
+                    if (!this.blackHoleOsc) return;
+                    
+                    const localOsc = this.blackHoleOsc;
+                    const localGain = this.blackHoleNode;
+                    
+                    localGain.gain.setValueAtTime(localGain.gain.value, this.ctx.currentTime);
+                    localGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+                    
+                    setTimeout(() => {
+                        try {
+                            localOsc.stop();
+                        } catch(e) {}
+                    }, 350);
+
+                    this.blackHoleOsc = null;
+                    this.blackHoleNode = null;
+                }
+            }
+        }
+
+        const soundEngine = new SoundEngine();
+
+        function toggleSound() {
+            soundEngine.init();
+            soundEngine.enabled = !soundEngine.enabled;
+            const btn = document.getElementById('btn-sound');
+            if (soundEngine.enabled) {
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg> Sound On`;
+                btn.classList.add('active');
+            } else {
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon></svg> Sound Muted`;
+                btn.classList.remove('active');
+                soundEngine.playBlackHoleHum(false);
+            }
+        }
+
+
+        /* ==========================================
+           2. PARTICLE ENGINE (Sparks, glows, & trails)
+           ========================================== */
+        class Particle {
+            constructor(x, y, vx, vy, color, size, decay) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.alpha = 1;
+                this.decay = decay || 0.02;
+            }
+
+            update(timeScale = 1.0) {
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+                this.alpha -= this.decay * timeScale;
+                this.size *= (1 - 0.02 * timeScale);
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = this.size * 2;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class ParticleEngine {
+            constructor() {
+                this.particles = [];
+            }
+
+            spawnBounce(x, y, vx, vy, type) {
+                const count = 15;
+                const colors = {
+                    player: ['#00f2fe', '#007fff', '#ffffff'],
+                    opponent: ['#ff007f', '#ff00aa', '#ffffff'],
+                    obstacle: ['#ff9e00', '#ffd000', '#ffffff'],
+                    anomaly: ['#9d4edd', '#c77dff', '#e0aaff'],
+                    portalOrange: ['#ff9e00', '#ff6d00', '#ffffff'],
+                    portalBlue: ['#00b4d8', '#0077b6', '#ffffff']
+                }[type] || ['#ffffff'];
+
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.atan2(vy, vx) + Math.PI + (Math.random() - 0.5) * 1.2;
+                    const speed = 2 + Math.random() * 6;
+                    const pVx = Math.cos(angle) * speed;
+                    const pVy = Math.sin(angle) * speed;
+                    const size = 1.5 + Math.random() * 3.5;
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const decay = 0.015 + Math.random() * 0.02;
+
+                    this.particles.push(new Particle(x, y, pVx, pVy, color, size, decay));
+                }
+            }
+
+            spawnExplosion(x, y, colorCode, count = 40) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 8;
+                    const pVx = Math.cos(angle) * speed;
+                    const pVy = Math.sin(angle) * speed;
+                    const size = 2 + Math.random() * 4;
+                    const decay = 0.01 + Math.random() * 0.015;
+
+                    this.particles.push(new Particle(x, y, pVx, pVy, colorCode, size, decay));
+                }
+            }
+
+            spawnBlackHoleAura(x, y) {
+                // Occasional inward spiral sparks
+                if (Math.random() > 0.4) return;
+                const angle = Math.random() * Math.PI * 2;
+                const r = 60 + Math.random() * 50;
+                const spX = x + Math.cos(angle) * r;
+                const spY = y + Math.sin(angle) * r;
+                
+                // Velocity pulls inward and slightly orbital
+                const pullAngle = angle + Math.PI + 0.4;
+                const speed = 1.5 + Math.random() * 1.5;
+                const vx = Math.cos(pullAngle) * speed;
+                const vy = Math.sin(pullAngle) * speed;
+
+                this.particles.push(new Particle(spX, spY, vx, vy, '#9d4edd', 1.5, 0.02));
+            }
+
+            update(timeScale = 1.0) {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update(timeScale);
+                    if (this.particles[i].alpha <= 0 || this.particles[i].size <= 0.2) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            draw(ctx) {
+                for (const p of this.particles) {
+                    p.draw(ctx);
+                }
+            }
+
+            clear() {
+                this.particles = [];
+            }
+        }
+
+
+        /* ==========================================
+           3. PHYSICAL ELASTIC GRID (Space Distortion)
+           ========================================== */
+        class SpringGrid {
+            constructor(width, height, spacing = 40) {
+                this.spacing = spacing;
+                this.nodes = [];
+                this.springK = 0.035;
+                this.damping = 0.88;
+
+                // Build grids slightly extending beyond limits to prevent borders tearing
+                for (let y = -spacing; y <= height + spacing; y += spacing) {
+                    for (let x = -spacing; x <= width + spacing; x += spacing) {
+                        this.nodes.push({
+                            x: x, y: y,
+                            ox: x, oy: y,
+                            vx: 0, vy: 0
+                        });
+                    }
+                }
+            }
+
+            applyDistortion(tx, ty, mass, maxDist = 250) {
+                for (const node of this.nodes) {
+                    const dx = node.x - tx;
+                    const dy = node.y - ty;
+                    const distSq = dx * dx + dy * dy + 400; // soft factor
+                    const dist = Math.sqrt(distSq);
+
+                    if (dist < maxDist) {
+                        // Gravitational visual pull
+                        const force = (mass * 12) / distSq;
+                        const factor = Math.min(force, 10);
+                        node.vx -= (dx / dist) * factor;
+                        node.vy -= (dy / dist) * factor;
+                    }
+                }
+            }
+
+            update() {
+                for (const node of this.nodes) {
+                    // Pull back to home position
+                    const dx = node.ox - node.x;
+                    const dy = node.oy - node.y;
+                    
+                    node.vx += dx * this.springK;
+                    node.vy += dy * this.springK;
+
+                    // Apply damping
+                    node.vx *= this.damping;
+                    node.vy *= this.damping;
+
+                    node.x += node.vx;
+                    node.y += node.vy;
+                }
+            }
+
+            draw(ctx, width, height, strokeColor = 'rgba(0, 242, 254, 0.08)') {
+                ctx.save();
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 1;
+
+                const cols = Math.floor((width + this.spacing * 2) / this.spacing) + 1;
+                const rows = Math.floor((height + this.spacing * 2) / this.spacing) + 1;
+
+                // Draw horizontal deformed grid lines
+                for (let r = 0; r < rows; r++) {
+                    ctx.beginPath();
+                    for (let c = 0; c < cols; c++) {
+                        const idx = r * cols + c;
+                        if (idx < this.nodes.length) {
+                            const node = this.nodes[idx];
+                            if (c === 0) ctx.moveTo(node.x, node.y);
+                            else ctx.lineTo(node.x, node.y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+
+                // Draw vertical deformed grid lines
+                for (let c = 0; c < cols; c++) {
+                    ctx.beginPath();
+                    for (let r = 0; r < rows; r++) {
+                        const idx = r * cols + c;
+                        if (idx < this.nodes.length) {
+                            const node = this.nodes[idx];
+                            if (r === 0) ctx.moveTo(node.x, node.y);
+                            else ctx.lineTo(node.x, node.y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+
+        /* ==========================================
+           4. PHYSICS SYSTEM (Drift & Collision)
+           ========================================== */
+        class Obstacle {
+            constructor(x, y, radius, color = '#ff9e00') {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.color = color;
+                this.mass = radius * 2;
+            }
+
+            update(width, height, timeScale = 1.0) {
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+
+                // Wall collisions for obstacles (buffer standard radius)
+                if (this.x - this.radius < 50) {
+                    this.x = 50 + this.radius;
+                    this.vx = Math.abs(this.vx);
+                } else if (this.x + this.radius > width - 50) {
+                    this.x = width - 50 - this.radius;
+                    this.vx = -Math.abs(this.vx);
+                }
+
+                if (this.y - this.radius < 10) {
+                    this.y = 10 + this.radius;
+                    this.vy = Math.abs(this.vy);
+                } else if (this.y + this.radius > height - 10) {
+                    this.y = height - 10 - this.radius;
+                    this.vy = -Math.abs(this.vy);
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.fillStyle = 'rgba(255, 158, 0, 0.05)';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw central design decoration
+                ctx.strokeStyle = 'rgba(255, 158, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius - 8, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Ball {
+            constructor(x, y, vx, vy, radius = 9, color = '#00f2fe') {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.radius = radius;
+                this.color = color;
+                this.trail = [];
+                this.maxTrailLength = 16;
+                this.mass = radius;
+                this.spinned = 0; // rotational factor
+                
+                // Black hole integration states
+                this.captured = false;
+                this.captureTimer = 0;
+            }
+
+            update(timeScale = 1.0) {
+                if (this.captured) {
+                    this.captureTimer -= 0.016 * timeScale;
+                    return; // Position locks during capture phase inside black hole
+                }
+
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+
+                // Decay spin rotation
+                this.vy += this.spinned * timeScale;
+                this.spinned *= Math.pow(0.97, timeScale);
+
+                // Velocity safeguards to prevent dead locks
+                const currentSpeed = Math.hypot(this.vx, this.vy);
+                if (currentSpeed < 3.5) {
+                    const angle = Math.atan2(this.vy, this.vx) || 0;
+                    this.vx = Math.cos(angle) * 3.5;
+                    this.vy = Math.sin(angle) * 3.5;
+                } else if (currentSpeed > 18) {
+                    // Damp excessive energy
+                    const factor = 18 / currentSpeed;
+                    this.vx *= factor;
+                    this.vy *= factor;
+                }
+
+                // Minimum horizontal velocity checks (prevents complete vertical stalling)
+                if (Math.abs(this.vx) < 1.8) {
+                    this.vx = Math.sign(this.vx || 1) * 1.8;
+                }
+
+                // Record visual trail paths
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > this.maxTrailLength) {
+                    this.trail.shift();
+                }
+            }
+
+            draw(ctx) {
+                // Draw historical drift trails
+                ctx.save();
+                for (let i = 0; i < this.trail.length; i++) {
+                    const pos = this.trail[i];
+                    const pct = i / this.trail.length;
+                    ctx.fillStyle = this.color;
+                    ctx.globalAlpha = pct * 0.25;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.radius * pct * 1.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                // Draw main ball entity
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+
+        /* ==========================================
+           5. PREDICTIVE CORVUS AI (Asynchronous trajectory mapping)
+           ========================================== */
+        class OpponentAI {
+            constructor(paddle) {
+                this.paddle = paddle;
+                this.targetY = 300;
+                this.updateInterval = 12; // Run expensive path calculations once every 12 frames
+                this.frameCounter = 0;
+                this.difficulty = 'medium';
+            }
+
+            setDifficulty(diff) {
+                this.difficulty = diff;
+            }
+
+            update(gameManager) {
+                this.frameCounter++;
+                if (this.frameCounter >= this.updateInterval) {
+                    this.frameCounter = 0;
+                    this.predictTrajectory(gameManager);
+                }
+
+                // Smoothly track towards calculated interception point
+                let maxSpeed = 3.5;
+                let jitterDeadzone = 12;
+                
+                switch(this.difficulty) {
+                    case 'easy':
+                        maxSpeed = 2.2;
+                        jitterDeadzone = 25;
+                        break;
+                    case 'medium':
+                        maxSpeed = 4.2;
+                        jitterDeadzone = 14;
+                        break;
+                    case 'hard':
+                        maxSpeed = 7.5;
+                        jitterDeadzone = 6;
+                        break;
+                    case 'chaos':
+                        maxSpeed = 16.0;
+                        jitterDeadzone = 2;
+                        break;
+                }
+
+                // If Gravity Flip anomaly is active, AI gets thrown off balance slightly
+                if (gameManager.activeAnomaly === 'GRAVITY_FLIP') {
+                    maxSpeed *= 0.85;
+                }
+
+                const diffY = this.targetY - (this.paddle.y + this.paddle.height / 2);
+                if (Math.abs(diffY) > jitterDeadzone) {
+                    const step = Math.sign(diffY) * Math.min(Math.abs(diffY), maxSpeed);
+                    this.paddle.y += step;
+                    this.paddle.speed = step;
+                } else {
+                    this.paddle.speed = 0;
+                }
+            }
+
+            predictTrajectory(gameManager) {
+                const balls = gameManager.balls;
+                if (balls.length === 0) return;
+
+                // Pick the most threatening ball (moving towards AI's side at x > center)
+                let targetBall = balls[0];
+                let maxProgress = -1;
+
+                for (const b of balls) {
+                    if (b.vx > 0) {
+                        const progX = b.x;
+                        if (progX > maxProgress) {
+                            maxProgress = progX;
+                            targetBall = b;
+                        }
+                    }
+                }
+
+                // If all balls moving away, track general center or default state
+                if (targetBall.vx <= 0) {
+                    this.targetY = 300 + (Math.sin(Date.now() * 0.002) * 50);
+                    return;
+                }
+
+                // Simulate physics step ahead to find intersection point
+                let sX = targetBall.x;
+                let sY = targetBall.y;
+                let sVx = targetBall.vx;
+                let sVy = targetBall.vy;
+                let sSpin = targetBall.spinned;
+
+                const goalX = this.paddle.x;
+                const canvasW = gameManager.canvas.width;
+                const canvasH = gameManager.canvas.height;
+                const obstacles = gameManager.obstacles;
+
+                // Cap simulation steps to prevent hang-ups
+                let steps = 0;
+                const maxSteps = 150;
+
+                while (sX < goalX && steps < maxSteps) {
+                    steps++;
+                    sX += sVx;
+                    sY += sVy;
+                    sVy += sSpin;
+                    sSpin *= 0.97;
+
+                    // Simulate wall collisions
+                    if (sY - targetBall.radius < 10) {
+                        sY = 10 + targetBall.radius;
+                        sVy = -sVy;
+                    } else if (sY + targetBall.radius > canvasH - 10) {
+                        sY = canvasH - 10 - targetBall.radius;
+                        sVy = -sVy;
+                    }
+
+                    // Simulate simplified obstacle bounce reflections
+                    for (const obs of obstacles) {
+                        const dx = sX - obs.x;
+                        const dy = sY - obs.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < targetBall.radius + obs.radius) {
+                            // Mirror velocity vector
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            const dotProd = sVx * nx + sVy * ny;
+                            sVx = sVx - 2 * dotProd * nx;
+                            sVy = sVy - 2 * dotProd * ny;
+                            
+                            // Push coordinates out of obstacle
+                            sX = obs.x + nx * (targetBall.radius + obs.radius + 1);
+                            sY = obs.y + ny * (targetBall.radius + obs.radius + 1);
+                        }
+                    }
+
+                    // Gravity Flip simulation helper
+                    if (gameManager.activeAnomaly === 'GRAVITY_FLIP') {
+                        const gr = gameManager.gravityVector;
+                        sVx += gr.x;
+                        sVy += gr.y;
+                    }
+
+                    // Black Hole attraction simulation helper
+                    if (gameManager.activeAnomaly === 'BLACK_HOLE') {
+                        const bhX = canvasW / 2;
+                        const bhY = canvasH / 2;
+                        const bdx = bhX - sX;
+                        const bdy = bhY - sY;
+                        const bdistSq = bdx * bdx + bdy * bdy + 1000;
+                        const bdist = Math.sqrt(bdistSq);
+                        if (bdist < 250) {
+                            const bforce = 120 / bdistSq; // gravity scale
+                            sVx += (bdx / bdist) * bforce;
+                            sVy += (bdy / bdist) * bforce;
+                        }
+                    }
+                }
+
+                // Apply dynamic margin based on AI difficulty settings
+                let errorSpread = 0;
+                if (this.difficulty === 'easy') errorSpread = 50;
+                else if (this.difficulty === 'medium') errorSpread = 25;
+                else if (this.difficulty === 'hard') errorSpread = 10;
+                else if (this.difficulty === 'chaos') errorSpread = 0;
+
+                const jitterOffset = (Math.random() - 0.5) * errorSpread;
+                this.targetY = Math.max(30, Math.min(canvasH - 30, sY + jitterOffset));
+            }
+        }
+
+
+        /* ==========================================
+           6. CENTRAL GAME MANAGER & ANOMALIES LOOP
+           ========================================== */
+        class GameManager {
+            constructor() {
+                this.canvas = document.getElementById('game-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Paddles (Margins & structural parameters)
+                this.paddleWidth = 15;
+                this.paddleHeight = 105;
+                this.playerPaddle = { x: 40, y: 250, width: this.paddleWidth, height: this.paddleHeight, speed: 0 };
+                this.aiPaddle = { x: 945, y: 250, width: this.paddleWidth, height: this.paddleHeight, speed: 0 };
+
+                this.balls = [];
+                this.obstacles = [];
+                this.particles = new ParticleEngine();
+                this.grid = new SpringGrid(1000, 600, 42);
+                this.opponentAI = new OpponentAI(this.aiPaddle);
+
+                // States
+                this.scores = { player: 0, opponent: 0 };
+                this.isPlaying = false;
+                this.isPaused = false;
+                this.timeScale = 1.0;
+
+                // Mouse/Touch controls tracking
+                this.mouseY = 300;
+                
+                // Chaos Anomaly System properties
+                this.activeAnomaly = 'NONE';
+                this.anomalyCooldown = 10.0; // Seconds left until swap
+                this.anomalyWarningActive = false;
+                this.gravityVector = { x: 0, y: 0 };
+                this.portals = [];
+                this.portalRadius = 24;
+
+                this.lastTime = 0;
+                this.shakeAmount = 0;
+
+                // Event logs reference
+                this.consoleElement = document.getElementById('log-console');
+                this.bootTime = Date.now();
+
+                this.setupInputListeners();
+            }
+
+            setupInputListeners() {
+                // Tracking coordinates from pointer actions relative to canvas scale bounds
+                const handlePointer = (clientValY) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const scaleY = this.canvas.height / rect.height;
+                    this.mouseY = (clientValY - rect.top) * scaleY;
+                };
+
+                window.addEventListener('mousemove', (e) => {
+                    handlePointer(e.clientY);
+                });
+
+                window.addEventListener('touchmove', (e) => {
+                    if (e.touches.length > 0) {
+                        handlePointer(e.touches[0].clientY);
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
+
+            logMessage(text, type = 'normal') {
+                const elapsedSec = ((Date.now() - this.bootTime) / 1000).toFixed(2);
+                const elapsedFormatted = elapsedSec.padStart(7, '0');
+                
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+
+                let txtClass = '';
+                if (type === 'anomaly') txtClass = 'log-text-anomaly';
+                else if (type === 'warning') txtClass = 'log-text-warning';
+                else if (type === 'score') txtClass = 'log-text-score';
+
+                entry.innerHTML = `<span class="log-time">[00:${elapsedFormatted}]</span><span class="${txtClass}">${text}</span>`;
+                this.consoleElement.appendChild(entry);
+                this.consoleElement.scrollTop = this.consoleElement.scrollHeight;
+            }
+
+            spawnInitialAssets() {
+                this.balls = [];
+                // Dynamic speed trajectory
+                const vx = (Math.random() > 0.5 ? 1 : -1) * 6;
+                const vy = (Math.random() - 0.5) * 5;
+                this.balls.push(new Ball(500, 300, vx, vy));
+
+                // Spawn floating obstacles in central playing zones
+                this.obstacles = [];
+                this.obstacles.push(new Obstacle(400, 200, 32));
+                this.obstacles.push(new Obstacle(600, 400, 32));
+                this.obstacles.push(new Obstacle(500, 300, 24, '#ff9e00'));
+
+                this.portals = [];
+                this.activeAnomaly = 'NONE';
+                this.anomalyCooldown = 10.0;
+                this.anomalyWarningActive = false;
+                this.gravityVector = { x: 0, y: 0 };
+                this.timeScale = 1.0;
+                
+                soundEngine.playBlackHoleHum(false);
+            }
+
+            triggerScore(side) {
+                this.shakeAmount = 25;
+                if (side === 'player') {
+                    this.scores.player++;
+                    this.logMessage(`Goal conceded by Corvus AI. Player scores!`, 'score');
+                    soundEngine.playScorePlayer();
+                    this.particles.spawnExplosion(this.canvas.width - 50, 300, '#00f2fe', 60);
+                } else {
+                    this.scores.opponent++;
+                    this.logMessage(`Goal conceded by Player. AI scores!`, 'score');
+                    soundEngine.playScoreAI();
+                    this.particles.spawnExplosion(50, 300, '#ff007f', 60);
+                }
+
+                // Check endgame scoring states
+                if (this.scores.player >= 7) {
+                    this.endGame('victory');
+                } else if (this.scores.opponent >= 7) {
+                    this.endGame('defeat');
+                } else {
+                    this.spawnInitialAssets();
+                }
+
+                this.updateScoreboardUI();
+            }
+
+            updateScoreboardUI() {
+                document.getElementById('player-score').innerText = this.scores.player.toString().padStart(2, '0');
+                document.getElementById('opponent-score').innerText = this.scores.opponent.toString().padStart(2, '0');
+            }
+
+            updateHUDAnomaly(name, desc) {
+                document.getElementById('hud-anomaly-name').innerText = name;
+                document.getElementById('hud-anomaly-desc').innerText = desc;
+                
+                // Color match highlights
+                const titleNode = document.getElementById('hud-anomaly-name');
+                const progressNode = document.getElementById('radial-timer');
+                
+                const colors = {
+                    'NONE': 'var(--neon-purple)',
+                    'BLACK HOLE': '#9d4edd',
+                    'GRAVITY FLIP': '#ff9e00',
+                    'BALL SHATTER': '#ff007f',
+                    'TIME DILATION': '#39ff14',
+                    'PORTAL WARP': '#00b4d8'
+                };
+                
+                titleNode.style.color = colors[name] || 'var(--neon-purple)';
+                progressNode.style.stroke = colors[name] || 'var(--neon-purple)';
+            }
+
+            endGame(result) {
+                this.isPlaying = false;
+                const goOverlay = document.getElementById('overlay-gameover');
+                const titleNode = document.getElementById('gameover-title');
+                const descNode = document.getElementById('gameover-subtitle');
+
+                if (result === 'victory') {
+                    titleNode.innerText = 'Victory Achieved';
+                    titleNode.style.background = 'linear-gradient(135deg, var(--neon-blue), var(--neon-green))';
+                    titleNode.style.webkitBackgroundClip = 'text';
+                    descNode.innerText = `Sector secured. Score: ${this.scores.player} - ${this.scores.opponent}. You outplayed Corvus AI.`;
+                    this.logMessage(`System victory detected. AI sector neutralized.`, 'score');
+                } else {
+                    titleNode.innerText = 'System Overrun';
+                    titleNode.style.background = 'linear-gradient(135deg, var(--neon-pink), var(--neon-purple))';
+                    titleNode.style.webkitBackgroundClip = 'text';
+                    descNode.innerText = `AI breached shielding. Score: ${this.scores.player} - ${this.scores.opponent}. Access keys stolen.`;
+                    this.logMessage(`Critical defeat. Security systems overridden by opponent AI.`, 'warning');
+                }
+
+                goOverlay.classList.remove('hidden');
+                soundEngine.playBlackHoleHum(false);
+            }
+
+            /* ==========================================
+               7. ANOMALY SCHEDULER & PHYSICS MANIPULATORS
+               ========================================== */
+            updateAnomalyTimer(dt) {
+                this.anomalyCooldown -= dt;
+
+                // Warnings play 2s before cycle resets
+                if (this.anomalyCooldown <= 2.0 && !this.anomalyWarningActive && this.activeAnomaly === 'NONE') {
+                    this.anomalyWarningActive = true;
+                    soundEngine.playAnomalyWarning();
+                    this.logMessage(`Quantum flux warning. Space-time collapse imminent...`, 'warning');
+                    document.getElementById('banner').innerText = 'Warning: Spatial Anomaly Detected';
+                    document.getElementById('banner').classList.add('show');
+                }
+
+                if (this.anomalyCooldown <= 0) {
+                    if (this.activeAnomaly === 'NONE') {
+                        this.triggerRandomAnomaly();
+                    } else {
+                        this.dissipateAnomaly();
+                    }
+                }
+
+                // Update UI radial clock
+                const elapsed = Math.max(0, this.anomalyCooldown);
+                document.getElementById('hud-timer').innerText = Math.ceil(elapsed) + 's';
+                
+                const progressCircle = document.getElementById('radial-timer');
+                const totalDur = this.activeAnomaly === 'NONE' ? 10.0 : 10.0;
+                const pct = elapsed / totalDur;
+                const circumference = 132; // 2 * pi * r (21)
+                progressCircle.style.strokeDashoffset = (circumference - (pct * circumference)).toString();
+            }
+
+            triggerRandomAnomaly() {
+                const anomalies = ['BLACK_HOLE', 'GRAVITY_FLIP', 'BALL_SHATTER', 'TIME_DILATION', 'PORTALS'];
+                const selected = anomalies[Math.floor(Math.random() * anomalies.length)];
+                
+                this.activeAnomaly = selected;
+                this.anomalyCooldown = 10.0; // Active duration
+                this.anomalyWarningActive = false;
+                
+                document.getElementById('banner').classList.remove('show');
+                soundEngine.playAnomalyTrigger();
+                this.shakeAmount = 18;
+
+                const arenaDiv = document.getElementById('arena');
+                arenaDiv.classList.add('shake');
+                setTimeout(() => arenaDiv.classList.remove('shake'), 400);
+
+                switch(selected) {
+                    case 'BLACK_HOLE':
+                        this.logMessage(`Anomaly triggered: CENTRAL BLACK HOLE active.`, 'anomaly');
+                        this.updateHUDAnomaly('BLACK HOLE', 'Singularity in the field pulling objects. Event Horizon will capture and sling the ball.');
+                        soundEngine.playBlackHoleHum(true);
+                        break;
+                    case 'GRAVITY_FLIP':
+                        // Determine random vertical vector direction
+                        const pullDirY = Math.random() > 0.5 ? 0.20 : -0.20;
+                        this.gravityVector = { x: 0, y: pullDirY };
+                        const dirText = pullDirY > 0 ? 'DOWNWARD' : 'UPWARD';
+                        this.logMessage(`Anomaly triggered: GRAVITY FLIP active (${dirText} drift).`, 'anomaly');
+                        this.updateHUDAnomaly('GRAVITY FLIP', `Gravity vectors reversed! Everything drifts ${dirText.toLowerCase()}. Fight the drag.`);
+                        break;
+                    case 'BALL_SHATTER':
+                        this.logMessage(`Anomaly triggered: BALL SHATTER multi-ball deployed.`, 'anomaly');
+                        this.updateHUDAnomaly('BALL SHATTER', 'Single ball split into three. Multiple score possibilities active. Keep track of all items!');
+                        // Splitting logic
+                        if (this.balls.length > 0) {
+                            const b = this.balls[0];
+                            const curSpeed = Math.hypot(b.vx, b.vy);
+                            const baseAngle = Math.atan2(b.vy, b.vx);
+                            
+                            // Ball B (+30 degrees)
+                            const v1x = Math.cos(baseAngle + 0.5) * curSpeed;
+                            const v1y = Math.sin(baseAngle + 0.5) * curSpeed;
+                            this.balls.push(new Ball(b.x, b.y, v1x, v1y, 7, '#ff007f'));
+
+                            // Ball C (-30 degrees)
+                            const v2x = Math.cos(baseAngle - 0.5) * curSpeed;
+                            const v2y = Math.sin(baseAngle - 0.5) * curSpeed;
+                            this.balls.push(new Ball(b.x, b.y, v2x, v2y, 7, '#9d4edd'));
+                        }
+                        break;
+                    case 'TIME_DILATION':
+                        this.logMessage(`Anomaly triggered: TIME DILATION active.`, 'anomaly');
+                        this.updateHUDAnomaly('TIME DILATION', 'Time dialation matrix active. Ball moves in super slow-mo, paddles retain normal movement.');
+                        this.timeScale = 0.25;
+                        break;
+                    case 'PORTALS':
+                        this.logMessage(`Anomaly triggered: PORTAL WARP zones spawned.`, 'anomaly');
+                        this.updateHUDAnomaly('PORTAL WARP', 'Teleportation portals active. Entering Orange portal warps items out of Blue portal.');
+                        // Spawning portal locations
+                        this.portals = [
+                            { x: 260, y: 150, color: 'rgba(255, 158, 0, 0.9)', linkId: 1, sColor: '#ff9e00' },
+                            { x: 740, y: 450, color: 'rgba(0, 180, 216, 0.9)', linkId: 0, sColor: '#00b4d8' }
+                        ];
+                        break;
+                }
+            }
+
+            dissipateAnomaly() {
+                this.logMessage(`Anomaly field collapsed. Local physics stabilized.`, 'anomaly');
+                this.updateHUDAnomaly('Physics Normal', 'Zero-G drift mechanics standard. No cosmic disturbances detected.');
+                
+                this.activeAnomaly = 'NONE';
+                this.anomalyCooldown = 10.0; // Cooldown duration
+                this.timeScale = 1.0;
+                this.portals = [];
+                this.gravityVector = { x: 0, y: 0 };
+                
+                soundEngine.playBlackHoleHum(false);
+
+                // Clean up multi-balls down to single ball
+                if (this.balls.length > 1) {
+                    // Find the one closest to middle field
+                    let closest = this.balls[0];
+                    let minDist = 1000;
+                    for (const b of this.balls) {
+                        const dist = Math.abs(b.x - 500);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closest = b;
+                        }
+                    }
+                    closest.color = '#00f2fe';
+                    closest.radius = 9;
+                    this.balls = [closest];
+                }
+            }
+
+            /* ==========================================
+               8. GAME LOOP & COLLISION RESOLUTIONS
+               ========================================== */
+            update(timestamp) {
+                if (!this.isPlaying) return;
+
+                if (!this.lastTime) this.lastTime = timestamp;
+                const dt = (timestamp - this.lastTime) / 1000;
+                this.lastTime = timestamp;
+
+                // Physics calculations
+                this.updatePhysics();
+
+                // Draw canvas visual frame updates
+                this.render();
+
+                // Anomaly timing loops
+                this.updateAnomalyTimer(dt);
+
+                // Screen shake decay tracker
+                if (this.shakeAmount > 0) {
+                    this.shakeAmount *= 0.9;
+                    if (this.shakeAmount < 0.1) this.shakeAmount = 0;
+                }
+
+                requestAnimationFrame((t) => this.update(t));
+            }
+
+            updatePhysics() {
+                // 1. Move Player paddle smoothly to track coordinate inputs
+                const targetY = Math.max(15, Math.min(this.canvas.height - this.paddleHeight - 15, this.mouseY - this.paddleHeight / 2));
+                const diffY = targetY - this.playerPaddle.y;
+                
+                // Physical acceleration tracking for spin calculations
+                const maxPaddleMoveSpeed = 22;
+                const step = Math.sign(diffY) * Math.min(Math.abs(diffY), maxPaddleMoveSpeed);
+                this.playerPaddle.y += step;
+                this.playerPaddle.speed = step;
+
+                // Drift player paddle slightly during gravity flip anomalies
+                if (this.activeAnomaly === 'GRAVITY_FLIP') {
+                    this.playerPaddle.y += this.gravityVector.y * 8;
+                }
+
+                // 2. Drive AI Opponent
+                this.opponentAI.update(this);
+
+                // 3. Update active obstacle drift directions
+                for (const obs of this.obstacles) {
+                    obs.update(this.canvas.width, this.canvas.height, this.timeScale);
+                }
+
+                // 4. Update balls & process collisions
+                for (let i = this.balls.length - 1; i >= 0; i--) {
+                    const b = this.balls[i];
+
+                    // Process specific active anomaly gravitational impacts
+                    if (this.activeAnomaly === 'GRAVITY_FLIP') {
+                        b.vx += this.gravityVector.x * this.timeScale;
+                        b.vy += this.gravityVector.y * this.timeScale;
+                    }
+
+                    if (this.activeAnomaly === 'BLACK_HOLE') {
+                        const bhX = this.canvas.width / 2;
+                        const bhY = this.canvas.height / 2;
+                        const dx = bhX - b.x;
+                        const dy = bhY - b.y;
+                        const distSq = dx * dx + dy * dy + 1000;
+                        const dist = Math.sqrt(distSq);
+
+                        if (b.captured) {
+                            // Shrink & spiral ball into singularity center
+                            const t = 1 - (b.captureTimer / 0.5); // 0.5s timer
+                            b.x = b.x * 0.85 + bhX * 0.15;
+                            b.y = b.y * 0.85 + bhY * 0.15;
+                            b.radius = 9 * (1 - t * 0.8);
+
+                            if (b.captureTimer <= 0) {
+                                // Sling ball out at high velocity
+                                b.captured = false;
+                                b.radius = 9;
+                                const slingAngle = (Math.random() > 0.5 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.0;
+                                const slingSpeed = 13;
+                                b.vx = Math.cos(slingAngle) * slingSpeed;
+                                b.vy = Math.sin(slingAngle) * slingSpeed;
+                                b.color = '#ff007f'; // visual charge indicators
+                                
+                                this.shakeAmount = 15;
+                                soundEngine.playAnomalyTrigger();
+                                this.particles.spawnExplosion(bhX, bhY, '#9d4edd', 25);
+                                this.logMessage(`Ball ejected from event horizon singularity!`, 'anomaly');
+                            }
+                        } else if (dist < 22) {
+                            // Capture ball inside black hole
+                            b.captured = true;
+                            b.captureTimer = 0.5;
+                            b.vx = 0; b.vy = 0;
+                            this.logMessage(`Ball captured by gravity well event horizon.`, 'warning');
+                        } else if (dist < 280) {
+                            // Visual deformation pull forces
+                            const force = (5800 * this.timeScale) / distSq;
+                            b.vx += (dx / dist) * force;
+                            b.vy += (dy / dist) * force;
+                            
+                            this.grid.applyDistortion(b.x, b.y, 16);
+                            this.particles.spawnBlackHoleAura(bhX, bhY);
+                        }
+                    }
+
+                    // Proceed with normal movement steps
+                    b.update(this.timeScale);
+
+                    // Deform space fabric around ball movements
+                    this.grid.applyDistortion(b.x, b.y, 45, 140);
+
+                    // 5. Wall bounces (top and bottom)
+                    if (b.y - b.radius < 10) {
+                        b.y = 10 + b.radius;
+                        b.vy = Math.abs(b.vy);
+                        soundEngine.playWallBounce();
+                        this.particles.spawnBounce(b.x, b.y, b.vx, b.vy, 'obstacle');
+                        this.shakeAmount = 2;
+                    } else if (b.y + b.radius > this.canvas.height - 10) {
+                        b.y = this.canvas.height - 10 - b.radius;
+                        b.vy = -Math.abs(b.vy);
+                        soundEngine.playWallBounce();
+                        this.particles.spawnBounce(b.x, b.y, b.vx, b.vy, 'obstacle');
+                        this.shakeAmount = 2;
+                    }
+
+                    // 6. Portal teleportation anomalies
+                    if (this.activeAnomaly === 'PORTALS') {
+                        for (let pIdx = 0; pIdx < this.portals.length; pIdx++) {
+                            const portal = this.portals[pIdx];
+                            const pDist = Math.hypot(b.x - portal.x, b.y - portal.y);
+                            
+                            if (pDist < b.radius + this.portalRadius) {
+                                const targetPortal = this.portals[portal.linkId];
+                                
+                                // Teleport ball
+                                b.x = targetPortal.x;
+                                b.y = targetPortal.y;
+                                
+                                // Apply slight angle modification to prevent loop trapping
+                                const speed = Math.hypot(b.vx, b.vy) * 1.15; // slightly faster exit velocity
+                                const curAngle = Math.atan2(b.vy, b.vx);
+                                const newAngle = curAngle + (Math.random() - 0.5) * 0.6;
+                                
+                                b.vx = Math.cos(newAngle) * speed;
+                                b.vy = Math.sin(newAngle) * speed;
+
+                                // Prevent immediate collision loops by offset shifting positions
+                                b.x += b.vx * 2;
+                                b.y += b.vy * 2;
+
+                                soundEngine.playPortalTeleport();
+                                this.particles.spawnExplosion(portal.x, portal.y, portal.sColor, 20);
+                                this.particles.spawnExplosion(targetPortal.x, targetPortal.y, targetPortal.sColor, 20);
+                                this.logMessage(`Object warped: Portal [${pIdx === 0 ? 'ORANGE' : 'BLUE'}] -> Portal [${portal.linkId === 0 ? 'ORANGE' : 'BLUE'}].`, 'anomaly');
+                                this.shakeAmount = 10;
+                            }
+                        }
+                    }
+
+                    // 7. Paddle collisions
+                    // Left Paddle (Player)
+                    if (b.vx < 0 && b.x - b.radius <= this.playerPaddle.x + this.playerPaddle.width && b.x + b.radius >= this.playerPaddle.x) {
+                        if (b.y >= this.playerPaddle.y && b.y <= this.playerPaddle.y + this.playerPaddle.height) {
+                            b.x = this.playerPaddle.x + this.playerPaddle.width + b.radius;
+                            b.vx = -b.vx * 1.05; // slight speed multipliers on hit
+
+                            // Apply vertical angle skew and spin rotation factors based on hit points
+                            const hitRelY = (b.y - (this.playerPaddle.y + this.playerPaddle.height / 2)) / (this.playerPaddle.height / 2);
+                            b.vy = hitRelY * 5.0 + this.playerPaddle.speed * 0.35;
+                            b.spinned = this.playerPaddle.speed * 0.15;
+
+                            soundEngine.playPaddleHit();
+                            this.particles.spawnBounce(b.x, b.y, b.vx, b.vy, 'player');
+                            this.shakeAmount = 6;
+                        }
+                    }
+
+                    // Right Paddle (AI Opponent)
+                    if (b.vx > 0 && b.x + b.radius >= this.aiPaddle.x && b.x - b.radius <= this.aiPaddle.x + this.aiPaddle.width) {
+                        if (b.y >= this.aiPaddle.y && b.y <= this.aiPaddle.y + this.aiPaddle.height) {
+                            b.x = this.aiPaddle.x - b.radius;
+                            b.vx = -b.vx * 1.05;
+
+                            // Apply similar calculations for AI hits
+                            const hitRelY = (b.y - (this.aiPaddle.y + this.aiPaddle.height / 2)) / (this.aiPaddle.height / 2);
+                            b.vy = hitRelY * 5.0 + this.aiPaddle.speed * 0.35;
+                            b.spinned = this.aiPaddle.speed * 0.15;
+
+                            soundEngine.playPaddleHit();
+                            this.particles.spawnBounce(b.x, b.y, b.vx, b.vy, 'opponent');
+                            this.shakeAmount = 6;
+                        }
+                    }
+
+                    // 8. Obstacle collisions
+                    for (const obs of this.obstacles) {
+                        const dx = b.x - obs.x;
+                        const dy = b.y - obs.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < b.radius + obs.radius) {
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+
+                            // Relative velocity calculation
+                            const rVx = b.vx - obs.vx;
+                            const rVy = b.vy - obs.vy;
+
+                            // Dot product calculation
+                            const dotProd = rVx * nx + rVy * ny;
+
+                            // Only process collision if moving towards obstacle
+                            if (dotProd < 0) {
+                                const bounceFactor = 1.0;
+                                const impulse = (-(1 + bounceFactor) * dotProd) / ( (1/b.mass) + (1/obs.mass) );
+
+                                b.vx += (impulse * nx) / b.mass;
+                                b.vy += (impulse * ny) / b.mass;
+
+                                obs.vx -= (impulse * nx) / obs.mass;
+                                obs.vy -= (impulse * ny) / obs.mass;
+
+                                // De-penetrate overlapping spheres
+                                const overlap = (b.radius + obs.radius) - dist;
+                                b.x += nx * overlap * 0.55;
+                                b.y += ny * overlap * 0.55;
+                                obs.x -= nx * overlap * 0.45;
+                                obs.y -= ny * overlap * 0.45;
+
+                                soundEngine.playWallBounce();
+                                this.particles.spawnBounce(b.x, b.y, b.vx, b.vy, 'obstacle');
+                                this.shakeAmount = 5;
+                            }
+                        }
+                    }
+
+                    // 9. Score checking
+                    if (b.x < 0) {
+                        // AI scores
+                        this.balls.splice(i, 1);
+                        if (this.balls.length === 0) {
+                            this.triggerScore('opponent');
+                        }
+                    } else if (b.x > this.canvas.width) {
+                        // Player scores
+                        this.balls.splice(i, 1);
+                        if (this.balls.length === 0) {
+                            this.triggerScore('player');
+                        }
+                    }
+                }
+
+                // If all balls are destroyed by portal loops or weird errors, respawn
+                if (this.balls.length === 0 && this.isPlaying) {
+                    this.spawnInitialAssets();
+                }
+
+                // 10. Update particle engine
+                this.particles.update(this.timeScale);
+                
+                // 11. Physics grid updates
+                this.grid.update();
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Handle screen shake matrices
+                this.ctx.save();
+                if (this.shakeAmount > 0) {
+                    const dx = (Math.random() - 0.5) * this.shakeAmount;
+                    const dy = (Math.random() - 0.5) * this.shakeAmount;
+                    this.ctx.translate(dx, dy);
+                }
+
+                // 1. Draw glowing space deformation coordinates
+                let gridColor = 'rgba(0, 242, 254, 0.08)';
+                if (this.activeAnomaly === 'TIME_DILATION') {
+                    gridColor = 'rgba(57, 255, 20, 0.08)';
+                } else if (this.activeAnomaly === 'BALL_SHATTER') {
+                    gridColor = 'rgba(255, 0, 127, 0.08)';
+                } else if (this.activeAnomaly === 'BLACK_HOLE') {
+                    gridColor = 'rgba(157, 78, 221, 0.08)';
+                }
+                this.grid.draw(this.ctx, this.canvas.width, this.canvas.height, gridColor);
+
+                // 2. Draw outer arena containment boundaries
+                this.ctx.save();
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                this.ctx.lineWidth = 4;
+                this.ctx.strokeRect(50, 10, this.canvas.width - 100, this.canvas.height - 20);
+                this.ctx.restore();
+
+                // 3. Draw active anomaly visual models
+                if (this.activeAnomaly === 'BLACK_HOLE') {
+                    const bhX = this.canvas.width / 2;
+                    const bhY = this.canvas.height / 2;
+                    const angle = Date.now() * 0.0015;
+
+                    this.ctx.save();
+                    // Draw outer gravity pulls
+                    const grad = this.ctx.createRadialGradient(bhX, bhY, 5, bhX, bhY, 120);
+                    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+                    grad.addColorStop(0.3, 'rgba(36, 0, 70, 0.8)');
+                    grad.addColorStop(0.7, 'rgba(157, 78, 221, 0.25)');
+                    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    
+                    this.ctx.fillStyle = grad;
+                    this.ctx.beginPath();
+                    this.ctx.arc(bhX, bhY, 120, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // Accretion disk spinning loops
+                    this.ctx.translate(bhX, bhY);
+                    this.ctx.rotate(angle);
+                    this.ctx.strokeStyle = 'rgba(157, 78, 221, 0.6)';
+                    this.ctx.shadowBlur = 15;
+                    this.ctx.shadowColor = '#9d4edd';
+                    this.ctx.lineWidth = 3;
+                    
+                    // Spiral lines
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, 32, 0, Math.PI * 1.5);
+                    this.ctx.stroke();
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, 42, Math.PI, Math.PI * 2.5);
+                    this.ctx.stroke();
+
+                    // Core singularity
+                    this.ctx.fillStyle = '#06060c';
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                if (this.activeAnomaly === 'PORTALS') {
+                    this.portals.forEach((p, idx) => {
+                        const angle = Date.now() * 0.0025 * (idx === 0 ? 1 : -1);
+                        this.ctx.save();
+                        this.ctx.translate(p.x, p.y);
+                        this.ctx.rotate(angle);
+                        this.ctx.shadowBlur = 15;
+                        this.ctx.shadowColor = p.sColor;
+                        
+                        // Outer portal ring
+                        this.ctx.strokeStyle = p.color;
+                        this.ctx.lineWidth = 4;
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, this.portalRadius, 0, Math.PI * 2);
+                        this.ctx.stroke();
+
+                        // Inner design spiral
+                        this.ctx.lineWidth = 2;
+                        this.ctx.strokeStyle = '#ffffff';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(0, 0);
+                        this.ctx.quadraticCurveTo(8, 8, 12, 0);
+                        this.ctx.stroke();
+                        this.ctx.restore();
+                    });
+                }
+
+                if (this.activeAnomaly === 'GRAVITY_FLIP') {
+                    // Draw flowing arrow background patterns
+                    this.ctx.save();
+                    this.ctx.strokeStyle = 'rgba(255, 158, 0, 0.035)';
+                    this.ctx.lineWidth = 3;
+                    
+                    const flowOffset = (Date.now() * 0.04) % 80;
+                    const isDown = this.gravityVector.y > 0;
+                    
+                    for (let x = 150; x < this.canvas.width - 150; x += 150) {
+                        for (let y = 50; y < this.canvas.height; y += 100) {
+                            const arrowY = isDown ? (y + flowOffset) : (y - flowOffset);
+                            this.ctx.beginPath();
+                            if (isDown) {
+                                this.ctx.moveTo(x - 12, arrowY - 8);
+                                this.ctx.lineTo(x, arrowY + 4);
+                                this.ctx.lineTo(x + 12, arrowY - 8);
+                            } else {
+                                this.ctx.moveTo(x - 12, arrowY + 8);
+                                this.ctx.lineTo(x, arrowY - 4);
+                                this.ctx.lineTo(x + 12, arrowY + 8);
+                            }
+                            this.ctx.stroke();
+                        }
+                    }
+                    this.ctx.restore();
+                }
+
+                // 4. Draw Obstacles
+                for (const obs of this.obstacles) {
+                    obs.draw(this.ctx);
+                }
+
+                // 5. Draw Paddles
+                // Player Paddle (Cyan glows)
+                this.ctx.save();
+                this.ctx.shadowBlur = 12;
+                this.ctx.shadowColor = 'var(--neon-blue)';
+                this.ctx.fillStyle = 'var(--neon-blue)';
+                this.ctx.fillRect(this.playerPaddle.x, this.playerPaddle.y, this.playerPaddle.width, this.playerPaddle.height);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(this.playerPaddle.x + 3, this.playerPaddle.y + 4, 3, this.playerPaddle.height - 8);
+                this.ctx.restore();
+
+                // AI Opponent Paddle (Magenta glows)
+                this.ctx.save();
+                this.ctx.shadowBlur = 12;
+                this.ctx.shadowColor = 'var(--neon-pink)';
+                this.ctx.fillStyle = 'var(--neon-pink)';
+                this.ctx.fillRect(this.aiPaddle.x, this.aiPaddle.y, this.aiPaddle.width, this.aiPaddle.height);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(this.aiPaddle.x + this.aiPaddle.width - 6, this.aiPaddle.y + 4, 3, this.aiPaddle.height - 8);
+                this.ctx.restore();
+
+                // 6. Draw active particle systems
+                this.particles.draw(this.ctx);
+
+                // 7. Draw Ball entities
+                for (const b of this.balls) {
+                    b.draw(this.ctx);
+                }
+
+                this.ctx.restore(); // Restore shake matrix translations
+            }
+        }
+
+        const gameManager = new GameManager();
+
+        /* ==========================================
+           9. BOOT & GLOBAL UI ACTION ROUTINES
+           ========================================== */
+        function selectDifficulty(mode) {
+            // Adjust buttons toggled states
+            const buttons = document.querySelectorAll('.difficulty-select button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // Find triggered elements
+            const activeBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === mode);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            gameManager.opponentAI.setDifficulty(mode);
+            gameManager.logMessage(`Difficulty set to ${mode.toUpperCase()} mode. AI tracking algorithms optimized.`, 'anomaly');
+        }
+
+        function startGame() {
+            soundEngine.init();
+            soundEngine.resume();
+            
+            document.getElementById('overlay-menu').classList.add('hidden');
+            
+            gameManager.scores = { player: 0, opponent: 0 };
+            gameManager.updateScoreboardUI();
+            gameManager.spawnInitialAssets();
+            gameManager.isPlaying = true;
+            gameManager.lastTime = 0;
+            
+            gameManager.logMessage(`Systems check passed. Starting match...`, 'score');
+            
+            requestAnimationFrame((timestamp) => gameManager.update(timestamp));
+        }
+
+        function restartGame() {
+            document.getElementById('overlay-gameover').classList.add('hidden');
+            document.getElementById('overlay-menu').classList.add('hidden');
+            
+            gameManager.particles.clear();
+            gameManager.scores = { player: 0, opponent: 0 };
+            gameManager.updateScoreboardUI();
+            gameManager.spawnInitialAssets();
+            
+            if (!gameManager.isPlaying) {
+                gameManager.isPlaying = true;
+                gameManager.lastTime = 0;
+                requestAnimationFrame((timestamp) => gameManager.update(timestamp));
+            }
+            
+            gameManager.logMessage(`Match reboot triggered. Resetting scores to zero.`, 'warning');
+        }
+
+        // Auto select medium default button on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('default-diff').click();
+        });
+    </script>
+</body>
+</html>
